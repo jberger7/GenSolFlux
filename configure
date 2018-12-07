@@ -1,0 +1,243 @@
+#! /usr/bin/perl -w
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# GenSolFlux configuration script
+# Based on GENIE configuration script
+#
+# For help, type ./configure --help
+#
+# Costas Andreopoulos <costas.andreopoulos \at stfc.ac.uk>
+# University of Liverpool & STFC Rutherford Appleton Lab
+# Joshua Berger <josh.berger \at pitt.edu>
+# University of Pittsburgh
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# print out info & exit if any of the command-line arguments was --help
+#
+if(($match = grep(/--help/i, @ARGV)) > 0) { 
+  print "\n";
+  print "*** GenSolFlux configure script *** \n\n";
+  print "Usage: ./configure [option]... [flag=value]... \n\n";
+  print "    FLAG                 DESCRIPTION                                                 DEFAULT\n\n";
+  print "    --prefix             Installation location (for 'make install')                  /usr/local/\n";
+  print "\n options for 3rd party software, prefix with --with- (eg --with-soltrack-lib=/some/path/)\n\n";
+  print "    compiler             Compiler to use (any of clang,gcc)                          default: gcc \n";
+  print "    optimiz-level        Compiler optimization        any of O,O2,O3,OO,Os / default: O2 \n";
+  print "    soltrack-inc         Path to log4cpp includes     always needed                  (if unset: tries to auto-detect it) \n";
+  print "    soltrack-lib         Path to log4cpp library      always needed                  (if unset: tries to auto-detect it) \n\n";
+  print "If the printout was too long then pipe it through a pager, eg: \n";
+  print "./configure --help | more \n";
+  exit 0;
+}
+
+# Check that $GENIE is set
+#
+$GENIE = $ENV{'GENIE'};
+die ("*** Error *** The GENIE environmental variable (pointing to the top level GENIE directory) is not defined") 
+unless defined $GENIE;
+
+# Check that $ROOTSYS is set
+#
+$ROOTSYS = $ENV{'ROOTSYS'};
+die ("*** Error *** The ROOTSYS environmental variable is not defined. Is ROOT installed?") 
+unless defined $ROOTSYS;
+
+# Check whether ROOT itself was build with GSL enabled
+# (GENIE uses GSL via ROOT's MathMore library.)
+#
+{
+  $mathmore_lib = "$ROOTSYS/lib/libMathMore.so";
+  if( ! -f $mathmore_lib ) {
+     die ("*** Error *** ROOT needs to be built with GSL/MathMore enabled.");
+  }
+}
+
+
+# Enable auto-detection?
+#
+system("find $GENIE/configure");
+print "\n";
+$auto_detect = ($?==0) ? 1 : 0;
+if(! $auto_detect) {
+     print "\n*** Warning *** Path auto-detection is turned off. You need the 'find' utility to use that feature\n\n";
+}
+
+# Create a string by joining all the command line arguments
+#
+my $options = join(" ", @ARGV);
+
+# Get & save installation location (--prefix) or set default
+#
+my $prefix="/usr/local/";
+if(($match = grep(/--prefix/i, @ARGV)) > 0) { 
+  $options=~m/--prefix=(\S*)/i;
+  $prefix = $1;
+}
+
+# Open Makefile to write configuration options
+#
+$MKCONF_FILE = "Make.include";
+open(MKCONF, ">$MKCONF_FILE") or die("Can not write out the Makefile!");
+
+print MKCONF "INSTALLATION_PATH=$prefix\n";
+
+# Check compiler
+#
+my $gopt_with_compiler="gcc"; # default
+if( $options=~m/--with-compiler=(\S*)/i ) {
+  $gopt_with_compiler = $1;
+}
+
+# Check compiler optimization level
+#
+my $gopt_with_cxx_optimiz_flag="O2"; # default
+if( $options=~m/--with-optimiz-level=(\S*)/i ) {
+  $gopt_with_cxx_optimiz_flag = $1;
+}
+
+# The SolTrack library path must be specified
+#
+my $gopt_with_soltrack_lib = "";
+if(($match = grep(/--with-soltrack-lib/i, @ARGV)) > 0) { 
+    $options=~m/--with-soltrack-lib=(\S*)/i;
+    $gopt_with_soltrack_lib = $1;
+}
+if(! -d $gopt_with_soltrack_lib)  {
+    print "\n*** Warning *** You didn't specify the SolTrack library path \n";
+}
+# if it was not set, try to pick it up from the environment
+if($gopt_with_soltrack_lib eq "" && defined $ENV{'SOLTRACK_LIB'}) { 
+    $gopt_with_soltrack_lib = $ENV{'SOLTRACK_LIB'}; 
+    print "The \$SOLTRACK_LIB env var is defined. I will pick that and use --with-soltrack-lib=$gopt_with_soltrack_lib\n";
+}
+# if it still not set, try autodetecting it
+if(! -d $gopt_with_soltrack_lib && $auto_detect)  {
+    print "Auto-detecting SolTrack library path...\n";
+    $matched = auto_detect("libSolTrack.a");
+    if( $matched=~m/(\S*)\/libSolTrack.a/i ) {
+       $gopt_with_soltrack_lib = $1;
+    }
+    print "Setting --with-soltrack-inc=$gopt_with_soltrack_lib\n";
+  }
+# check
+my $fileso    = "$gopt_with_soltrack_lib/libSolTrack.so";
+if(! -e $fileso ) {
+    print "*** Error *** You need to specify the path to LibSolTrack library using --with-soltrack-lib=/some/path/\n";
+     exit 1;
+}
+
+# If --enable-soltrack was set then the full path to the SolTrack includes must be specified
+#
+my $gopt_with_soltrack_inc = "";
+if(($match = grep(/--with-soltrack-inc/i, @ARGV)) > 0) { 
+    $options=~m/--with-soltrack-inc=(\S*)/i;
+    $gopt_with_soltrack_inc = $1;
+}
+if(! -d $gopt_with_solflux_inc)  {
+    print "\n*** Warning *** You didn't specify the SolTrack include path \n";
+}
+# if it was not set, try to pick it up from the environment
+if($gopt_with_soltrack_inc eq "" && defined $ENV{'SOLTRACK_INC'}) { 
+     $gopt_with_soltrack_inc = $ENV{'SOLTRACK_INC'}; 
+     print "The \$SOLTRACK_INC env var is defined. I will pick that and use --with-soltrack-inc=$gopt_with_soltrack_inc\n";
+}
+# if it still not set, try autodetecting it
+if(! -d $gopt_with_soltrack_inc && $auto_detect)  {
+    print "Auto-detecting the SolTrack include path...\n";
+    $matched = auto_detect("SolTrack.h");
+    print "$gopt_with_soltrack_inc  \n";
+    if( $matched=~m/(\S*)\/SolTrack.h/i ) {
+	$gopt_with_soltrack_inc = $1;
+    }
+    print "Setting --with-soltrack-inc=$gopt_with_soltrack_inc\n";
+}
+# check
+my $file = "$gopt_with_soltrack_inc/SolTrack.h";
+if(! -e $file) {
+    print "*** Error *** You need to specify the SOLTRACK includes path using --with-soltrack-inc=/some/path/\n";
+    print "*** Error *** Otherwise, you should --disable-soltrack\n\n";
+    exit 1;
+}
+
+
+# Save config options
+#
+print MKCONF "GOPT_WITH_COMPILER=$gopt_with_compiler\n";
+print MKCONF "GOPT_WITH_CXX_OPTIMIZ_FLAG=-$gopt_with_cxx_optimiz_flag\n";
+print MKCONF "GOPT_WITH_SOLTRACK_LIB=$gopt_with_soltrack_lib\n";
+print MKCONF "GOPT_WITH_SOLTRACK_INC=$gopt_with_soltrack_inc\n";
+
+close(SOLTRACK);
+
+print "\nYour input configuration options were: @ARGV";
+if($#ARGV < 0) { print "(none)" };
+print "\n\n";
+
+if(-e $MKCONF_FILE) {
+  print "The $MKCONF_FILE file has been succesfully generated! \n";
+  print "The following config options were set: \n";
+
+  open(MKCONFR, "<$MKCONF_FILE") or die("Can not read back the Make.config!");
+  @make_conf=<MKCONFR>;
+  close(MKCONFR);
+# print "@make_conf\n" unless ;
+  foreach $setting (@make_conf) { 
+    chomp($setting); 
+    if ($setting=~m/\=/) {print "  $setting\n";} 
+  }
+
+  print "\n";
+  print "*** To continue building GenSolFlux type: make ";
+  print "\n\n";
+
+  exit 0;
+}
+
+sub auto_detect {
+  
+  # First place to look when autodetecting is in the directories in LD_LIBRARY_PATH
+  my @libdirs = ( );
+  push (@libdirs,split(":",$ENV{LD_LIBRARY_PATH}))    if defined $ENV{LD_LIBRARY_PATH};  
+  push (@libdirs,split(":",$ENV{DYLD_LIBRARY_PATH}))  if defined $ENV{DYLD_LIBRARY_PATH}; #and the mac equivalent
+  my @search_dir = ();
+  foreach my $libdir (unique_entries(@libdirs)) {
+    chomp($libdir);
+    if (not $libdir) {next;}
+    push (@search_dir, $libdir); # Append the LD library path directory
+    @pathdirs = split("/",$libdir);
+    $lastdir = pop(@pathdirs);
+    $basedir = join("/",@pathdirs);
+    if ($lastdir =~ m/lib/) {# If the LD_LIBRARY_PATH has "lib" in it, append "../include"
+      push (@search_dir, $basedir."/include"); 
+    }
+  }
+  push (@search_dir,"/usr");                        # Add usr
+  push (@search_dir,"/lib");                        # Add opt 
+  push (@search_dir,"/opt");                        # Add opt 
+  push (@search_dir,"$ENV{'HOME'}") 
+                 if defined $ENV{'HOME'};          # add $HOME
+  push (@search_dir,"/hep");                       # add where I add ext apps in my mac book air
+  push (@search_dir,"$ENV{'RSD_TOP_DIR'}") 
+                 if defined $ENV{'RSD_TOP_DIR'};   # add where RSD puts ext supporting libs
+  
+  @search_dir = unique_entries(@search_dir); # Search each dir only once
+    
+  $search_file = shift; 
+  $optional_fullpath_substr = shift; # extra help in locating the correct file
+
+  $optional_fullpath_substr = "" unless defined $optional_fullpath_substr;
+
+  foreach(@search_dir) {
+     $curr_dir = $_;
+     if(! -d $curr_dir) {next;}
+     @matches = `find $curr_dir/ -type f -maxdepth 7 -name \"$search_file\" 2> /dev/null | grep \"$optional_fullpath_substr\"`;
+     $nmatches = @matches;
+     if( $nmatches > 0) { return $matches[0]; }
+  }
+  return "";
+}
+
+# Get unique entries in an array
+sub unique_entries {
+  my %seen;
+  return grep { !$seen{$_}++ } @_;
+}

@@ -1,0 +1,5 @@
+INSTALLATION_PATH=/home/jberger/Tools/GenSolFlux/
+GOPT_WITH_COMPILER=gcc
+GOPT_WITH_CXX_OPTIMIZ_FLAG=-O2
+GOPT_WITH_SOLTRACK_LIB=/home/jberger/Sources/soltrack-2.2/usr/lib/
+GOPT_WITH_SOLTRACK_INC=/home/jberger/Sources/soltrack-2.2
