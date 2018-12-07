@@ -43,6 +43,10 @@
 
 \created December 5, 2018
 
+\cpright Copyright (c) 2018, Joshua Berger
+         This code is based on substantial input from Robert Hatcher and
+	 the GENIE software, available at http://www.genie-mc.org.
+	 It is distrubted under GPLv3: for details see LICENSE.
 */
 //____________________________________________________________________________
 
@@ -127,8 +131,8 @@ int main(int argc, char *argv[])
   loc.pressure = 101.0;
   loc.temperature = 300.0;
 
-  // Store the beam angle in radians, converted to the right coord system
-  const double angle = (360. - gOptBeamAngle) * PI / 180.;
+  // Store the beam angle in radians
+  const double angle = gOptBeamAngle * PI / 180.;
 
   // Determine the range of times to generate.  We go through the ROOT time format
   // because C time messes with the times in odd ways
@@ -165,9 +169,9 @@ int main(int argc, char *argv[])
     fentry->vtxy    = 0.0;
     fentry->vtxz    = 0.0;
     fentry->dist    = 0.0;
-    fentry->px      = - pd*cos(pos.altitudeRefract)*sin(pos.azimuthRefract - angle);
+    fentry->px      = - pd*cos(pos.altitudeRefract)*sin(pos.azimuthRefract + angle);
     fentry->py      = - pd*sin(pos.altitudeRefract);
-    fentry->pz      = - pd*cos(pos.altitudeRefract)*cos(pos.azimuthRefract - angle);
+    fentry->pz      = - pd*cos(pos.altitudeRefract)*cos(pos.azimuthRefract + angle);
     fentry->E       = Ed;
 
     // Fill the tree
