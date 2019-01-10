@@ -22,8 +22,8 @@ if(($match = grep(/--help/i, @ARGV)) > 0) {
   print "\n options for 3rd party software, prefix with --with- (eg --with-soltrack-lib=/some/path/)\n\n";
   print "    compiler             Compiler to use (any of clang,gcc)                          default: gcc \n";
   print "    optimiz-level        Compiler optimization        any of O,O2,O3,OO,Os / default: O2 \n";
-  print "    soltrack-inc         Path to log4cpp includes     always needed                  (if unset: tries to auto-detect it) \n";
-  print "    soltrack-lib         Path to log4cpp library      always needed                  (if unset: tries to auto-detect it) \n\n";
+  print "    soltrack-inc         Path to soltrack includes     always needed                  (if unset: tries to auto-detect it) \n";
+  print "    soltrack-lib         Path to soltrack library      always needed                  (if unset: tries to auto-detect it) \n\n";
   print "If the printout was too long then pipe it through a pager, eg: \n";
   print "./configure --help | more \n";
   exit 0;
